@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Room Viewer - Format GLB & Slider Perspektif</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Import Map for Modern Three.js ES Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --panel-bg: rgba(15, 23, 42, 0.85);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --accent-primary: #38bdf8;
+            --accent-secondary: #818cf8;
+            --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --glass-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.08) inset;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Top Brand Header */
+        .top-header {
+            position: absolute;
+            top: 20px;
+            left: 24px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 10px 18px;
+            border-radius: 16px;
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .brand-badge {
+            width: 38px;
+            height: 38px;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+        }
+
+        .brand-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #fff;
+        }
+
+        .brand-title p {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            display: inline-block;
+        }
+
+        /* Control Panel Container */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            width: 360px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            box-shadow: var(--glass-shadow);
+            z-index: 10;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+
+        .panel-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            background: rgba(56, 189, 248, 0.12);
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            font-family: monospace;
+        }
+
+        /* Perspective classification tag */
+        .perspective-tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-align: center;
+            margin-top: 8px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* Sliders */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .slider-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-main);
+        }
+
+        .slider-label span:last-child {
+            color: var(--text-muted);
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+            outline: none;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 2px 6px rgba(0,0,0,0.4);
+            border: 2px solid var(--accent-primary);
+            cursor: pointer;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* Presets Grid */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .btn-preset {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 8px 10px;
+            color: var(--text-main);
+            font-size: 11px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .btn-preset:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-preset.active {
+            background: var(--accent-gradient);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+        }
+
+        /* Toggles & Actions */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider-toggle {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider-toggle:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-toggle {
+            background: var(--accent-primary);
+        }
+
+        input:checked + .slider-toggle:before {
+            transform: translateX(18px);
+        }
+
+        /* Action Buttons */
+        .btn-action {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-upload {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px dashed rgba(56, 189, 248, 0.4);
+            color: var(--accent-primary);
+        }
+
+        .btn-upload:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent-primary);
+        }
+
+        /* Bottom Info Overlay */
+        .bottom-hud {
+            position: absolute;
+            bottom: 20px;
+            left: 24px;
+            z-index: 10;
+            background: var(--panel-bg);
+            backdrop-filter: blur(14px);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            padding: 8px 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 16px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .hud-item {
+            display: flex;
+            gap: 6px;
+        }
+
+        .hud-item strong {
+            color: var(--text-main);
+            font-family: monospace;
+        }
+
+        /* Loading Screen */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #090d16;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        .loader-spinner {
+            width: 56px;
+            height: 56px;
+            border: 4px solid rgba(56, 189, 248, 0.15);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .loader-progress {
+            width: 260px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .loader-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-gradient);
+            transition: width 0.3s ease;
+        }
+
+        .loader-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* Error Notification Banner */
+        #error-banner {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 120;
+            max-width: 540px;
+            background: rgba(239, 68, 68, 0.95);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* Instructions overlay */
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            right: 24px;
+            z-index: 9;
+            font-size: 11px;
+            color: var(--text-dim);
+            background: rgba(15, 23, 42, 0.6);
+            padding: 6px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* Drop zone overlay */
+        #drop-zone {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.85);
+            border: 4px dashed var(--accent-primary);
+            z-index: 150;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                width: calc(100vw - 32px);
+                right: 16px;
+                top: auto;
+                bottom: 16px;
+                max-height: 48vh;
+            }
+            .top-header {
+                left: 16px;
+                top: 16px;
+            }
+            .bottom-hud {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas Rendering Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Drop Zone -->
+    <div id="drop-zone">
+        <div style="font-size: 48px; margin-bottom: 12px;">📥</div>
+        <div>Lepaskan File GLB / GLTF di Sini</div>
+    </div>
+
+    <!-- Hidden file input for custom GLB -->
+    <input type="file" id="file-input" accept=".glb,.gltf" style="display: none;">
+
+    <!-- Loading Screen -->
+    <div id="loading-overlay">
+        <div class="loader-spinner"></div>
+        <div class="loader-text" id="loader-title">Memuat Model 3D Ruangan (GLB)...</div>
+        <div class="loader-progress">
+            <div class="loader-progress-bar" id="loader-bar"></div>
+        </div>
+        <div class="loader-sub" id="loader-detail">Menginisialisasi PBR Lighting & GLTFLoader</div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="error-banner"></div>
+
+    <!-- Top Left Header -->
+    <div class="top-header">
+        <div class="brand-badge">🏫</div>
+        <div class="brand-title">
+            <h1>3D Classroom Perspective Viewer (GLB)</h1>
+            <p><span class="status-dot"></span> <span id="model-status-text">Memuat model...</span></p>
+        </div>
+    </div>
+
+    <!-- Floating Perspective & Camera Control Panel -->
+    <div class="control-panel">
+        
+        <!-- Primary Perspective Slider -->
+        <div class="panel-section">
+            <div class="section-header">
+                <span class="section-title">🔭 Slider Perspektif (FOV)</span>
+                <span class="badge-value" id="fov-display">55°</span>
+            </div>
+            
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Field of View (Sudut Pandang)</span>
+                    <span id="fov-val-sub">55 deg</span>
+                </div>
+                <input type="range" id="slider-fov" min="15" max="120" value="55" step="1">
+            </div>
+
+            <!-- Perspective Type Tag -->
+            <div class="perspective-tag" id="perspective-tag">Normal (Sudut Mata Alami)</div>
+
+            <!-- Dolly Zoom Toggle -->
+            <div class="toggle-row" style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
+                <span style="color: var(--text-muted);">Dolly Zoom (Vertigo Effect)</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-dolly">
+                    <span class="slider-toggle"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Camera Distance & Elevation Sliders -->
+        <div class="panel-section">
+            <div class="section-header">
+                <span class="section-title">📐 Pengaturan Kamera</span>
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Jarak Kamera (Distance)</span>
+                    <span id="dist-display">16 u</span>
+                </div>
+                <input type="range" id="slider-distance" min="3" max="100" value="16" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Ketinggian Kamera (Height)</span>
+                    <span id="height-display">5 u</span>
+                </div>
+                <input type="range" id="slider-height" min="1" max="60" value="5" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Sudut Putar (Orbit Angle)</span>
+                    <span id="angle-display">90°</span>
+                </div>
+                <input type="range" id="slider-angle" min="0" max="360" value="90" step="1">
+            </div>
+        </div>
+
+        <!-- Perspective Presets -->
+        <div class="panel-section">
+            <div class="section-header">
+                <span class="section-title">📍 Preset Sudut Perspektif</span>
+            </div>
+            <div class="preset-grid">
+                <button class="btn-preset active" id="preset-student">
+                    <span>🧑‍🎓</span> Sisi Murid (Dalam)
+                </button>
+                <button class="btn-preset" id="preset-teacher">
+                    <span>👨‍🏫</span> Sisi Guru (Depan)
+                </button>
+                <button class="btn-preset" id="preset-window">
+                    <span>🪟</span> Sisi Jendela
+                </button>
+                <button class="btn-preset" id="preset-corner">
+                    <span>🏫</span> Sudut Luar Kelas
+                </button>
+                <button class="btn-preset" id="preset-isometric">
+                    <span>📐</span> Isometrik (Datar)
+                </button>
+                <button class="btn-preset" id="preset-topdown">
+                    <span>🗺️</span> Denah (Atas)
+                </button>
+            </div>
+        </div>
+
+        <!-- Scene & Lighting Options -->
+        <div class="panel-section">
+            <div class="section-header">
+                <span class="section-title">💡 Kecerahan & Pencahayaan</span>
+            </div>
+
+            <!-- Performance Mode Selector -->
+            <div class="slider-group" style="margin-bottom: 10px;">
+                <div class="slider-label">
+                    <span>⚡ Mode Performa (Kecepatan Render)</span>
+                </div>
+                <select id="select-quality" style="width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #38bdf8; font-weight: 600; padding: 7px 10px; border-radius: 8px; font-size: 11px; outline: none; cursor: pointer;">
+                    <option value="turbo" style="background: #0f172a;">⚡ Turbo 60+ FPS (Super Ringan & Cepat)</option>
+                    <option value="balanced" style="background: #0f172a;" selected>⚖️ Seimbang (Rekomendasi - Mulus & Jernih)</option>
+                    <option value="ultra" style="background: #0f172a;">💎 Kualitas Maksimal (Bayangan Penuh)</option>
+                </select>
+            </div>
+
+            <!-- Brightness / Exposure Slider -->
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Kecerahan Ruangan (Exposure)</span>
+                    <span id="exposure-display">1.8x</span>
+                </div>
+                <input type="range" id="slider-exposure" min="0.6" max="3.5" value="1.8" step="0.1">
+            </div>
+
+            <!-- Light Intensity Slider -->
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Intensitas Lampu Ruangan</span>
+                    <span id="light-display">1.8x</span>
+                </div>
+                <input type="range" id="slider-light" min="0.5" max="4.0" value="1.8" step="0.1">
+            </div>
+
+            <div class="toggle-row" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                <span style="color: var(--text-muted);">Plafon / Atap (Ceiling)</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-ceiling" checked>
+                    <span class="slider-toggle"></span>
+                </label>
+            </div>
+
+            <div class="toggle-row">
+                <span style="color: var(--text-muted);">Rotasi Otomatis (Turntable)</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-autorotate">
+                    <span class="slider-toggle"></span>
+                </label>
+            </div>
+
+            <div class="toggle-row">
+                <span style="color: var(--text-muted);">Lantai Grid Bantu</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-grid">
+                    <span class="slider-toggle"></span>
+                </label>
+            </div>
+
+            <div class="toggle-row">
+                <span style="color: var(--text-muted);">🌙 Mode Malam (Night Sky)</span>
+                <label class="switch">
+                    <input type="checkbox" id="toggle-daynight">
+                    <span class="slider-toggle"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Custom GLB Loader Button -->
+        <button class="btn-action btn-upload" id="btn-upload">
+            <span>📂</span> Buka File GLB Lain...
+        </button>
+
+        <!-- Reset Button -->
+        <button class="btn-action" id="btn-reset">
+            <span>↺</span> Reset Pandangan Default
+        </button>
+    </div>
+
+    <!-- Bottom HUD Stats -->
+    <div class="bottom-hud">
+        <div class="hud-item"><strong id="hud-fps" style="color: #10b981; font-size: 12px;">60 FPS</strong></div>
+        <div class="hud-item">Kamera: <strong id="hud-cam-pos">X:0 Y:5 Z:14</strong></div>
+        <div class="hud-item">Target: <strong id="hud-target-pos">X:0 Y:4 Z:-5</strong></div>
+        <div class="hud-item">FOV: <strong id="hud-fov">55°</strong></div>
+        <div class="hud-item">Aspek: <strong id="hud-aspect">16:9</strong></div>
+    </div>
+
+    <!-- Desktop interaction guide -->
+    <div class="controls-hint">
+        Klik Kiri + Geser: Rotasi Bebas | Klik Kanan: Geser Posisi | Scroll: Zoom
+    </div>
+
+    <!-- Main Three.js Application Logic -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+        import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+        // Check if opened via file:// protocol
+        if (window.location.protocol === 'file:') {
+            const errBanner = document.getElementById('error-banner');
+            errBanner.style.display = 'block';
+            errBanner.innerHTML = `
+                <strong>Peringatan Keamanan Browser (CORS):</strong><br>
+                Membuka file HTML langsung via <code>file:///</code> memblokir browser saat memuat file 3D.<br>
+                Silakan jalankan file <code>start_server.bat</code> di folder ini atau gunakan Live Server.
+            `;
+        }
+
+        // ═══════════════════════════════════════════════════
+        // PERFORMANCE: Global state & configuration
+        // ═══════════════════════════════════════════════════
+        let scene, camera, renderer, controls;
+        let roomMesh = null;
+        let gridHelper = null;
+        let ambientLight, hemiLight, directionalLight, fillLight;
+        let interiorLightsGroup;
+        let roomCenter = new THREE.Vector3(0, 4.5, 0);
+        let roomRadius = 20;
+
+        // PERFORMANCE: Render-on-demand flag
+        let needsRender = true;
+        let isAnimating = false; // for auto-rotate / damping
+
+        // PERFORMANCE: FPS tracking
+        let fpsFrames = 0;
+        let fpsLastTime = performance.now();
+        let currentFps = 60;
+        const hudFps = document.getElementById('hud-fps');
+
+        // PERFORMANCE: Quality settings
+        const QUALITY_PRESETS = {
+            turbo: {
+                pixelRatio: 0.4,
+                shadowEnabled: false,
+                shadowMapSize: 0,
+                antialias: true,
+                interiorLights: false,
+                shadowType: null,
+                maxPointLights: 0,
+            },
+            balanced: {
+                pixelRatio: 0.5,
+                shadowEnabled: true,
+                shadowMapSize: 1024,
+                antialias: true,
+                interiorLights: true,
+                shadowType: THREE.BasicShadowMap,
+                maxPointLights: 4,
+            },
+            ultra: {
+                pixelRatio: 0.5,
+                shadowEnabled: true,
+                shadowMapSize: 2048,
+                antialias: true,
+                interiorLights: true,
+                shadowType: THREE.PCFSoftShadowMap,
+                maxPointLights: 8,
+            }
+        };
+        let currentQuality = 'turbo';
+
+        // UI Element References
+        const sliderFov = document.getElementById('slider-fov');
+        const fovDisplay = document.getElementById('fov-display');
+        const fovValSub = document.getElementById('fov-val-sub');
+        const perspectiveTag = document.getElementById('perspective-tag');
+        const toggleDolly = document.getElementById('toggle-dolly');
+
+        const sliderDistance = document.getElementById('slider-distance');
+        const distDisplay = document.getElementById('dist-display');
+        const sliderHeight = document.getElementById('slider-height');
+        const heightDisplay = document.getElementById('height-display');
+        const sliderAngle = document.getElementById('slider-angle');
+        const angleDisplay = document.getElementById('angle-display');
+
+        const sliderExposure = document.getElementById('slider-exposure');
+        const exposureDisplay = document.getElementById('exposure-display');
+        const sliderLight = document.getElementById('slider-light');
+        const lightDisplay = document.getElementById('light-display');
+        const toggleCeiling = document.getElementById('toggle-ceiling');
+        const toggleAutoRotate = document.getElementById('toggle-autorotate');
+        const toggleGrid = document.getElementById('toggle-grid');
+        const toggleDayNight = document.getElementById('toggle-daynight');
+        const selectQuality = document.getElementById('select-quality');
+        const btnReset = document.getElementById('btn-reset');
+        const btnUpload = document.getElementById('btn-upload');
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+
+        const hudCamPos = document.getElementById('hud-cam-pos');
+        const hudTargetPos = document.getElementById('hud-target-pos');
+        const hudFov = document.getElementById('hud-fov');
+        const hudAspect = document.getElementById('hud-aspect');
+
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loaderBar = document.getElementById('loader-bar');
+        const loaderDetail = document.getElementById('loader-detail');
+        const modelStatusText = document.getElementById('model-status-text');
+
+        // Dolly zoom reference values
+        let baseFov = 55;
+        let baseDistance = 16;
+
+        // Day/Night sky state
+        let isNightMode = false;
+        let daySkyTexture = null;
+        let nightSkyTexture = null;
+
+        // PERFORMANCE: Throttle helper for HUD updates
+        let hudUpdatePending = false;
+        function scheduleHudUpdate() {
+            if (hudUpdatePending) return;
+            hudUpdatePending = true;
+            requestAnimationFrame(() => {
+                updateCameraSlidersFromPosition();
+                hudUpdatePending = false;
+            });
+        }
+
+        // PERFORMANCE: Debounced resize
+        let resizeTimeout = null;
+
+        // Initialize 3D Scene
+        init();
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+
+            // Generate procedural sky textures for day/night
+            daySkyTexture = generateSkyTexture(false);
+            nightSkyTexture = generateSkyTexture(true);
+            scene.background = daySkyTexture;
+
+            // 2. Camera Setup (Default view inside classroom from student side)
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(55, aspect, 0.1, 1000);
+            camera.position.set(0, 5, 14);
+
+            // 3. PERFORMANCE: Renderer Setup - optimized defaults
+            const preset = QUALITY_PRESETS[currentQuality];
+            renderer = new THREE.WebGLRenderer({
+                antialias: preset.antialias,
+                alpha: false,
+                powerPreference: 'high-performance',
+                stencil: false,           // PERF: disable unused stencil buffer
+                depth: true,
+            });
+            renderer.setPixelRatio(preset.pixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = preset.shadowEnabled;
+            if (preset.shadowType) renderer.shadowMap.type = preset.shadowType;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.8;
+            renderer.info.autoReset = false;  // PERF: manual reset for draw call tracking
+            container.appendChild(renderer.domElement);
+
+            // 4. PERFORMANCE: Environment map - use lower sigma for faster prefilter
+            const environment = new RoomEnvironment();
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(environment, 0.04).texture;
+            environment.dispose();
+            pmremGenerator.dispose();
+
+            // 5. PERFORMANCE: Orbit Controls - tuned damping
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;  // slightly faster damping = fewer trailing frames
+            controls.screenSpacePanning = true;
+            controls.minDistance = 1;
+            controls.maxDistance = 250;
+            controls.target.set(0, 4, -4);
+            controls.update();
+
+            // PERFORMANCE: Mark render needed on control changes
+            controls.addEventListener('change', () => {
+                needsRender = true;
+                scheduleHudUpdate();
+            });
+
+            // 6. Lighting Setup
+            setupLights();
+
+            // 7. Ground Grid Helper
+            gridHelper = new THREE.GridHelper(80, 40, 0x38bdf8, 0x1e293b);
+            gridHelper.position.y = -0.05;
+            gridHelper.visible = false;
+            scene.add(gridHelper);
+
+            // 8. Load GLB Model
+            loadGLBModel('models/classroom.glb');
+
+            // 9. Event Listeners for UI
+            setupUIEventListeners();
+
+            // 10. PERFORMANCE: Debounced resize handling
+            window.addEventListener('resize', () => {
+                if (resizeTimeout) clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(onWindowResize, 150);
+            });
+
+            // 11. Start Animation Loop
+            animate();
+        }
+
+        function setupLights() {
+            // Bright Ambient Light
+            ambientLight = new THREE.AmbientLight(0xffffff, 1.6);
+            scene.add(ambientLight);
+
+            // Hemisphere Light for natural skylight + floor bounce
+            hemiLight = new THREE.HemisphereLight(0xfff5ea, 0x8899aa, 2.2);
+            hemiLight.position.set(0, 30, 0);
+            scene.add(hemiLight);
+
+            // Main Directional Light (Sunlight through windows)
+            const preset = QUALITY_PRESETS[currentQuality];
+            directionalLight = new THREE.DirectionalLight(0xfff2dc, 2.8);
+            directionalLight.position.set(20, 25, 10);
+            directionalLight.castShadow = preset.shadowEnabled;
+            if (preset.shadowEnabled) {
+                directionalLight.shadow.mapSize.width = preset.shadowMapSize;
+                directionalLight.shadow.mapSize.height = preset.shadowMapSize;
+                directionalLight.shadow.bias = -0.0005;
+                // PERFORMANCE: Tight shadow camera frustum reduces wasted shadow map pixels
+                directionalLight.shadow.camera.left = -25;
+                directionalLight.shadow.camera.right = 25;
+                directionalLight.shadow.camera.top = 25;
+                directionalLight.shadow.camera.bottom = -25;
+                directionalLight.shadow.camera.near = 1;
+                directionalLight.shadow.camera.far = 60;
+            }
+            scene.add(directionalLight);
+
+            // Soft Fill Light from opposite wall
+            fillLight = new THREE.DirectionalLight(0xa5c9ff, 1.4);
+            fillLight.position.set(-20, 20, -10);
+            scene.add(fillLight);
+
+            // PERFORMANCE: Interior Lights - reduced count based on quality
+            interiorLightsGroup = new THREE.Group();
+            const zPositions = [-12, -4, 4, 11];
+            const maxLights = preset.maxPointLights;
+            const step = maxLights > 0 ? Math.max(1, Math.floor(zPositions.length * 2 / maxLights)) : 999;
+            let lightCount = 0;
+
+            if (preset.interiorLights) {
+                zPositions.forEach(z => {
+                    if (lightCount < maxLights) {
+                        // Warm ceiling light row 1
+                        const p1 = new THREE.PointLight(0xfff8ee, 2.2, 28, 1.2);
+                        p1.position.set(-2.5, 7.5, z);
+                        interiorLightsGroup.add(p1);
+                        lightCount++;
+                    }
+                    if (lightCount < maxLights) {
+                        // Warm ceiling light row 2
+                        const p2 = new THREE.PointLight(0xfff8ee, 2.2, 28, 1.2);
+                        p2.position.set(2.5, 7.5, z);
+                        interiorLightsGroup.add(p2);
+                        lightCount++;
+                    }
+                });
+            }
+            scene.add(interiorLightsGroup);
+        }
+
+        function loadGLBModel(source) {
+            loadingOverlay.style.opacity = '1';
+            loadingOverlay.style.visibility = 'visible';
+            loaderBar.style.width = '15%';
+            loaderDetail.innerText = 'Mengunduh model 3D GLB...';
+
+            const loader = new GLTFLoader();
+
+            // PERFORMANCE: Setup DRACO decoder for compressed meshes
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+            dracoLoader.setDecoderConfig({ type: 'js' });  // Use JS decoder (works everywhere)
+            loader.setDRACOLoader(dracoLoader);
+
+            // PERFORMANCE: Setup Meshopt decoder
+            loader.setMeshoptDecoder(MeshoptDecoder);
+
+            loader.load(
+                source,
+                function (gltf) {
+                    if (roomMesh) {
+                        // PERFORMANCE: Dispose old model geometry & materials
+                        roomMesh.traverse(child => {
+                            if (child.isMesh) {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) {
+                                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                                    mats.forEach(m => {
+                                        if (m.map) m.map.dispose();
+                                        if (m.normalMap) m.normalMap.dispose();
+                                        if (m.roughnessMap) m.roughnessMap.dispose();
+                                        if (m.metalnessMap) m.metalnessMap.dispose();
+                                        if (m.aoMap) m.aoMap.dispose();
+                                        m.dispose();
+                                    });
+                                }
+                            }
+                        });
+                        scene.remove(roomMesh);
+                    }
+
+                    roomMesh = gltf.scene;
+
+                    const preset = QUALITY_PRESETS[currentQuality];
+
+                    // PERFORMANCE: Optimize materials & mesh settings
+                    let meshCount = 0;
+                    let triangleCount = 0;
+                    roomMesh.traverse(function (child) {
+                        if (child.isMesh) {
+                            meshCount++;
+                            // PERFORMANCE: Only cast shadows on quality modes that need it
+                            child.castShadow = preset.shadowEnabled;
+                            child.receiveShadow = preset.shadowEnabled;
+
+                            // PERFORMANCE: Enable frustum culling (default but ensure it)
+                            child.frustumCulled = true;
+
+                            // PERFORMANCE: Set matrix auto update to false for static meshes
+                            child.matrixAutoUpdate = false;
+                            child.updateMatrix();
+                            child.updateMatrixWorld(true);
+
+                            if (child.geometry) {
+                                // Count triangles for stats
+                                const idx = child.geometry.index;
+                                triangleCount += idx ? idx.count / 3 : (child.geometry.attributes.position?.count || 0) / 3;
+                            }
+
+                            if (child.material) {
+                                child.material.side = THREE.DoubleSide;
+                                // PERFORMANCE: Skip shadowSide setting in turbo mode
+                                if (preset.shadowEnabled) {
+                                    child.material.shadowSide = THREE.DoubleSide;
+                                }
+                                if (child.material.map) {
+                                    child.material.map.colorSpace = THREE.SRGBColorSpace;
+                                    // PERFORMANCE: Use trilinear filtering for better quality at distance
+                                    child.material.map.generateMipmaps = true;
+                                    child.material.map.minFilter = THREE.LinearMipmapLinearFilter;
+                                }
+                            }
+                        }
+                    });
+
+                    // Compute accurate bounding box
+                    const box = new THREE.Box3().setFromObject(roomMesh);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+
+                    // Center model and align floor to y = 0
+                    roomMesh.position.x = -center.x;
+                    roomMesh.position.y = -box.min.y;
+                    roomMesh.position.z = -center.z;
+
+                    // PERFORMANCE: After positioning, update matrices once
+                    roomMesh.updateMatrixWorld(true);
+
+                    scene.add(roomMesh);
+
+                    // Compute room target center
+                    roomCenter.set(0, size.y * 0.35, 0);
+                    roomRadius = Math.max(size.x, size.y, size.z);
+
+                    // Set initial view from student perspective inside the classroom
+                    setActivePreset('preset-student');
+                    controls.target.set(0, 4, -5);
+                    camera.position.set(0, 5, 14);
+                    updateFov(55);
+                    controls.update();
+                    updateCameraSlidersFromPosition();
+                    needsRender = true;
+
+                    // Hide loading overlay
+                    loaderBar.style.width = '100%';
+                    setTimeout(() => {
+                        loadingOverlay.style.opacity = '0';
+                        loadingOverlay.style.visibility = 'hidden';
+                    }, 400);
+
+                    const name = typeof source === 'string' ? source.split('/').pop() : 'Model Kustom';
+                    modelStatusText.innerText = `${name} — ${meshCount} mesh, ${Math.round(triangleCount/1000)}K △`;
+
+                    console.log(`[PERF] Model loaded: ${meshCount} meshes, ${Math.round(triangleCount)} triangles`);
+                },
+                function (xhr) {
+                    if (xhr.lengthComputable) {
+                        const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                        loaderBar.style.width = percent + '%';
+                        loaderDetail.innerText = `Mengunduh model: ${percent}% (${(xhr.loaded / 1024 / 1024).toFixed(1)} MB)`;
+                    } else {
+                        loaderBar.style.width = '75%';
+                    }
+                },
+                function (error) {
+                    console.error('Gagal memuat GLB:', error);
+                    loaderDetail.innerText = 'Gagal memuat file GLB!';
+                    const errBanner = document.getElementById('error-banner');
+                    errBanner.style.display = 'block';
+                    errBanner.innerHTML = `
+                        <strong>Gagal Memuat Model GLB:</strong><br>
+                        ${error.message || 'Error parsing format GLB/GLTF.'}
+                    `;
+                }
+            );
+        }
+
+        // ═══════════════════════════════════════════════════
+        // PERFORMANCE: Quality switching
+        // ═══════════════════════════════════════════════════
+        function applyQualityPreset(quality) {
+            const preset = QUALITY_PRESETS[quality];
+            if (!preset) return;
+            currentQuality = quality;
+
+            // Update pixel ratio
+            renderer.setPixelRatio(preset.pixelRatio);
+
+            // Update shadow settings
+            renderer.shadowMap.enabled = preset.shadowEnabled;
+            if (preset.shadowType) renderer.shadowMap.type = preset.shadowType;
+
+            // Update directional light shadow
+            directionalLight.castShadow = preset.shadowEnabled;
+            if (preset.shadowEnabled && directionalLight.shadow) {
+                directionalLight.shadow.mapSize.width = preset.shadowMapSize;
+                directionalLight.shadow.mapSize.height = preset.shadowMapSize;
+                // Force shadow map regeneration
+                if (directionalLight.shadow.map) {
+                    directionalLight.shadow.map.dispose();
+                    directionalLight.shadow.map = null;
+                }
+            }
+
+            // Update interior lights visibility
+            interiorLightsGroup.children.forEach((light, i) => {
+                light.visible = preset.interiorLights && i < preset.maxPointLights;
+            });
+
+            // Update mesh shadow casting
+            if (roomMesh) {
+                roomMesh.traverse(child => {
+                    if (child.isMesh) {
+                        child.castShadow = preset.shadowEnabled;
+                        child.receiveShadow = preset.shadowEnabled;
+                    }
+                });
+            }
+
+            // Force re-render
+            renderer.shadowMap.needsUpdate = true;
+            needsRender = true;
+
+            console.log(`[PERF] Quality set to: ${quality}, pixelRatio: ${preset.pixelRatio}, shadows: ${preset.shadowEnabled}`);
+        }
+
+        // Perspective classification helper
+        function updatePerspectiveCategory(fov) {
+            let label = '';
+            let color = '';
+
+            if (fov <= 25) {
+                label = 'Telephoto (Datar / Isometrik-like)';
+                color = '#38bdf8';
+            } else if (fov <= 40) {
+                label = 'Telephoto Sedang (Kedalaman Terkompresi)';
+                color = '#60a5fa';
+            } else if (fov <= 60) {
+                label = 'Normal (Sudut Pandang Mata Manusia)';
+                color = '#34d399';
+            } else if (fov <= 85) {
+                label = 'Wide Angle (Ruangan Terlihat Lebih Luas)';
+                color = '#fbbf24';
+            } else {
+                label = 'Ultra-Wide / Fisheye (Distorsi Perspektif Kuat)';
+                color = '#f87171';
+            }
+
+            perspectiveTag.innerText = label;
+            perspectiveTag.style.borderColor = color;
+            perspectiveTag.style.color = color;
+        }
+
+        function updateFov(newFov) {
+            newFov = parseFloat(newFov);
+            
+            if (toggleDolly.checked && camera) {
+                const currentOffset = camera.position.clone().sub(controls.target);
+                const currentDist = currentOffset.length();
+                
+                const newDist = baseDistance * Math.tan((baseFov * Math.PI) / 360) / Math.tan((newFov * Math.PI) / 360);
+                
+                if (currentDist > 0.001) {
+                    currentOffset.normalize().multiplyScalar(Math.max(2, Math.min(newDist, 180)));
+                    camera.position.copy(controls.target).add(currentOffset);
+                }
+            }
+
+            camera.fov = newFov;
+            camera.updateProjectionMatrix();
+
+            sliderFov.value = newFov;
+            fovDisplay.innerText = Math.round(newFov) + '°';
+            fovValSub.innerText = Math.round(newFov) + ' deg';
+            hudFov.innerText = Math.round(newFov) + '°';
+
+            updatePerspectiveCategory(newFov);
+            updateCameraSlidersFromPosition();
+            needsRender = true;
+        }
+
+        function updateCameraFromSliders() {
+            const dist = parseFloat(sliderDistance.value);
+            const height = parseFloat(sliderHeight.value);
+            const angleDeg = parseFloat(sliderAngle.value);
+            const rad = (angleDeg * Math.PI) / 180;
+
+            const x = controls.target.x + dist * Math.cos(rad);
+            const z = controls.target.z + dist * Math.sin(rad);
+            const y = height;
+
+            camera.position.set(x, y, z);
+            controls.update();
+
+            distDisplay.innerText = Math.round(dist) + ' u';
+            heightDisplay.innerText = Math.round(height) + ' u';
+            angleDisplay.innerText = Math.round(angleDeg) + '°';
+
+            baseDistance = dist;
+            baseFov = camera.fov;
+            needsRender = true;
+        }
+
+        function updateCameraSlidersFromPosition() {
+            if (!camera || !controls) return;
+
+            const offset = camera.position.clone().sub(controls.target);
+            const horizDist = Math.sqrt(offset.x * offset.x + offset.z * offset.z);
+            let angleDeg = Math.round((Math.atan2(offset.z, offset.x) * 180) / Math.PI);
+            if (angleDeg < 0) angleDeg += 360;
+
+            sliderDistance.value = Math.round(horizDist);
+            distDisplay.innerText = Math.round(horizDist) + ' u';
+
+            sliderHeight.value = Math.round(camera.position.y);
+            heightDisplay.innerText = Math.round(camera.position.y) + ' u';
+
+            sliderAngle.value = angleDeg;
+            angleDisplay.innerText = angleDeg + '°';
+
+            hudCamPos.innerText = `X:${Math.round(camera.position.x)} Y:${Math.round(camera.position.y)} Z:${Math.round(camera.position.z)}`;
+            hudTargetPos.innerText = `X:${Math.round(controls.target.x)} Y:${Math.round(controls.target.y)} Z:${Math.round(controls.target.z)}`;
+        }
+
+        function setPerspectiveView(fov, distance, angleDeg, height) {
+            updateFov(fov);
+            sliderDistance.value = distance;
+            sliderHeight.value = height;
+            sliderAngle.value = angleDeg;
+            updateCameraFromSliders();
+        }
+
+        function setupUIEventListeners() {
+            sliderFov.addEventListener('input', (e) => {
+                updateFov(e.target.value);
+                clearActivePresets();
+            });
+
+            sliderDistance.addEventListener('input', () => {
+                updateCameraFromSliders();
+                clearActivePresets();
+            });
+
+            sliderHeight.addEventListener('input', () => {
+                updateCameraFromSliders();
+                clearActivePresets();
+            });
+
+            sliderAngle.addEventListener('input', () => {
+                updateCameraFromSliders();
+                clearActivePresets();
+            });
+
+            // Brightness / Exposure Slider
+            sliderExposure.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                exposureDisplay.innerText = val.toFixed(1) + 'x';
+                renderer.toneMappingExposure = val;
+                needsRender = true;
+            });
+
+            // Light Intensity Slider
+            sliderLight.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                lightDisplay.innerText = val.toFixed(1) + 'x';
+                ambientLight.intensity = 1.6 * (val / 1.8);
+                hemiLight.intensity = 2.2 * (val / 1.8);
+                directionalLight.intensity = 2.8 * (val / 1.8);
+                interiorLightsGroup.children.forEach(light => {
+                    light.intensity = 2.2 * (val / 1.8);
+                });
+                needsRender = true;
+            });
+
+            // PERFORMANCE: Quality Mode Selector
+            selectQuality.addEventListener('change', (e) => {
+                applyQualityPreset(e.target.value);
+            });
+
+            // Ceiling Cutaway Toggle
+            toggleCeiling.addEventListener('change', (e) => {
+                if (!roomMesh) return;
+                const show = e.target.checked;
+                roomMesh.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => {
+                            if (m.name && m.name.toLowerCase().includes('ceilling')) {
+                                child.visible = show;
+                            }
+                        });
+                    }
+                });
+                needsRender = true;
+            });
+
+            toggleAutoRotate.addEventListener('change', (e) => {
+                controls.autoRotate = e.target.checked;
+                controls.autoRotateSpeed = 1.8;
+                isAnimating = e.target.checked;
+                needsRender = true;
+            });
+
+            toggleGrid.addEventListener('change', (e) => {
+                if (gridHelper) gridHelper.visible = e.target.checked;
+                needsRender = true;
+            });
+
+            // Day/Night Toggle
+            toggleDayNight.addEventListener('change', (e) => {
+                applyDayNightMode(e.target.checked);
+            });
+
+            toggleDolly.addEventListener('change', () => {
+                baseFov = camera.fov;
+                baseDistance = camera.position.clone().sub(controls.target).length();
+            });
+
+            btnReset.addEventListener('click', () => {
+                setActivePreset('preset-student');
+                controls.target.set(0, 4, -5);
+                camera.position.set(0, 5, 14);
+                updateFov(55);
+                controls.update();
+                updateCameraSlidersFromPosition();
+                toggleDolly.checked = false;
+                needsRender = true;
+            });
+
+            // Upload Custom GLB Button
+            btnUpload.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const objectUrl = URL.createObjectURL(file);
+                    loadGLBModel(objectUrl);
+                }
+            });
+
+            // Drag and drop GLB files
+            window.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.display = 'flex';
+            });
+
+            window.addEventListener('dragleave', (e) => {
+                if (e.relatedTarget === null) {
+                    dropZone.style.display = 'none';
+                }
+            });
+
+            window.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.display = 'none';
+                if (e.dataTransfer.files.length > 0) {
+                    const file = e.dataTransfer.files[0];
+                    if (file.name.toLowerCase().endsWith('.glb') || file.name.toLowerCase().endsWith('.gltf')) {
+                        const objectUrl = URL.createObjectURL(file);
+                        loadGLBModel(objectUrl);
+                    } else {
+                        alert('Silakan pilih file 3D berekstensi .glb atau .gltf');
+                    }
+                }
+            });
+
+            setupPresetButtons();
+        }
+
+        function clearActivePresets() {
+            document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        }
+
+        function setActivePreset(id) {
+            clearActivePresets();
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.add('active');
+        }
+
+        function setupPresetButtons() {
+            // Pandangan dari Sisi Murid (Di dalam kelas, menghadap papan tulis)
+            document.getElementById('preset-student').addEventListener('click', () => {
+                setActivePreset('preset-student');
+                controls.target.set(0, 4, -6);
+                camera.position.set(0, 4.8, 13);
+                updateFov(55);
+                controls.update();
+                updateCameraSlidersFromPosition();
+            });
+
+            // Pandangan dari Sisi Guru (Di depan papan tulis, menghadap bangku murid)
+            document.getElementById('preset-teacher').addEventListener('click', () => {
+                setActivePreset('preset-teacher');
+                controls.target.set(0, 3.8, 4);
+                camera.position.set(0, 4.8, -12);
+                updateFov(60);
+                controls.update();
+                updateCameraSlidersFromPosition();
+            });
+
+            // Pandangan dari Sisi Jendela
+            document.getElementById('preset-window').addEventListener('click', () => {
+                setActivePreset('preset-window');
+                controls.target.set(1.5, 3.5, 0);
+                camera.position.set(-4.5, 4.5, 2);
+                updateFov(65);
+                controls.update();
+                updateCameraSlidersFromPosition();
+            });
+
+            // Sudut Luar Kelas (Overview 3/4)
+            document.getElementById('preset-corner').addEventListener('click', () => {
+                setActivePreset('preset-corner');
+                controls.target.copy(roomCenter);
+                setPerspectiveView(50, Math.round(roomRadius * 1.3), 45, Math.round(roomRadius * 0.7));
+            });
+
+            // Isometrik (Datar)
+            document.getElementById('preset-isometric').addEventListener('click', () => {
+                setActivePreset('preset-isometric');
+                controls.target.copy(roomCenter);
+                setPerspectiveView(22, Math.round(roomRadius * 2.2), 45, Math.round(roomRadius * 1.3));
+            });
+
+            // Denah / Tampak Atas
+            document.getElementById('preset-topdown').addEventListener('click', () => {
+                setActivePreset('preset-topdown');
+                controls.target.copy(roomCenter);
+                setPerspectiveView(45, 5, 90, Math.round(roomRadius * 1.5));
+            });
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            hudAspect.innerText = aspect.toFixed(2);
+            needsRender = true;
+        }
+
+        // ═══════════════════════════════════════════════════
+        // SKY: Procedural day/night sky texture generation
+        // ═══════════════════════════════════════════════════
+        function generateSkyTexture(isNight) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            if (!isNight) {
+                // ── Day Sky ──
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                skyGrad.addColorStop(0, '#1e5fa8');
+                skyGrad.addColorStop(0.12, '#3a7ec8');
+                skyGrad.addColorStop(0.3, '#5a9de0');
+                skyGrad.addColorStop(0.5, '#7bb8f0');
+                skyGrad.addColorStop(0.7, '#a0d0f8');
+                skyGrad.addColorStop(0.85, '#c8e4fc');
+                skyGrad.addColorStop(1, '#e8f2ff');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw fluffy clouds
+                const cloudSets = [
+                    { x: 200, y: 220, s: 120 }, { x: 550, y: 180, s: 140 },
+                    { x: 900, y: 260, s: 100 }, { x: 1250, y: 200, s: 160 },
+                    { x: 1600, y: 280, s: 110 }, { x: 1900, y: 220, s: 90 },
+                    { x: 380, y: 420, s: 80 },  { x: 750, y: 380, s: 110 },
+                    { x: 1100, y: 440, s: 130 }, { x: 1450, y: 400, s: 95 },
+                    { x: 1750, y: 460, s: 75 },  { x: 300, y: 550, s: 60 },
+                    { x: 650, y: 530, s: 90 },  { x: 1050, y: 570, s: 70 },
+                    { x: 1380, y: 540, s: 85 },
+                ];
+                cloudSets.forEach(c => drawCloud(ctx, c.x, c.y, c.s));
+
+            } else {
+                // ── Night Sky ──
+                const nightGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                nightGrad.addColorStop(0, '#030108');
+                nightGrad.addColorStop(0.2, '#0a0420');
+                nightGrad.addColorStop(0.4, '#150838');
+                nightGrad.addColorStop(0.55, '#1e0e50');
+                nightGrad.addColorStop(0.7, '#251260');
+                nightGrad.addColorStop(0.85, '#1a0d40');
+                nightGrad.addColorStop(1, '#0e0825');
+                ctx.fillStyle = nightGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Subtle nebula/cloud patches
+                const nebulaPatches = [
+                    { x: 400, y: 250, s: 180 }, { x: 900, y: 350, s: 200 },
+                    { x: 1400, y: 280, s: 160 }, { x: 1700, y: 400, s: 140 },
+                    { x: 600, y: 500, s: 120 },
+                ];
+                nebulaPatches.forEach(p => {
+                    const numPuffs = 10 + Math.floor(Math.random() * 8);
+                    for (let i = 0; i < numPuffs; i++) {
+                        const px = p.x + (Math.random() - 0.5) * p.s * 2;
+                        const py = p.y + (Math.random() - 0.5) * p.s * 0.8;
+                        const radius = p.s * (0.2 + Math.random() * 0.4);
+                        const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
+                        grad.addColorStop(0, 'rgba(80, 40, 120, 0.08)');
+                        grad.addColorStop(0.5, 'rgba(60, 30, 100, 0.04)');
+                        grad.addColorStop(1, 'rgba(40, 20, 80, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
+                    }
+                });
+
+                // Stars
+                for (let i = 0; i < 300; i++) {
+                    const sx = Math.random() * canvas.width;
+                    const sy = Math.random() * canvas.height * 0.85;
+                    const starSize = Math.random() * 1.8 + 0.3;
+                    const brightness = Math.random() * 0.6 + 0.4;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, starSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // A few brighter stars with glow
+                for (let i = 0; i < 15; i++) {
+                    const sx = Math.random() * canvas.width;
+                    const sy = Math.random() * canvas.height * 0.6;
+                    const glowGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, 8);
+                    glowGrad.addColorStop(0, 'rgba(200, 220, 255, 0.9)');
+                    glowGrad.addColorStop(0.3, 'rgba(180, 200, 255, 0.3)');
+                    glowGrad.addColorStop(1, 'rgba(150, 180, 255, 0)');
+                    ctx.fillStyle = glowGrad;
+                    ctx.fillRect(sx - 8, sy - 8, 16, 16);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            return texture;
+        }
+
+        function drawCloud(ctx, x, y, size) {
+            const numPuffs = 10 + Math.floor(Math.random() * 6);
+            for (let i = 0; i < numPuffs; i++) {
+                const px = x + (Math.random() - 0.5) * size * 1.8;
+                const py = y + (Math.random() - 0.5) * size * 0.5;
+                const radius = size * (0.25 + Math.random() * 0.4);
+                const grad = ctx.createRadialGradient(px, py, radius * 0.1, px, py, radius);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+                grad.addColorStop(0.4, 'rgba(255, 252, 245, 0.6)');
+                grad.addColorStop(0.7, 'rgba(240, 240, 255, 0.25)');
+                grad.addColorStop(1, 'rgba(220, 230, 255, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(px, py, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // SKY: Day/Night mode switching
+        // ═══════════════════════════════════════════════════
+        function applyDayNightMode(isNight) {
+            isNightMode = isNight;
+
+            // Swap sky background
+            scene.background = isNight ? nightSkyTexture : daySkyTexture;
+
+            if (isNight) {
+                // ── Night lighting ──
+                ambientLight.color.setHex(0x2233aa);
+                ambientLight.intensity = 0.4;
+
+                hemiLight.color.setHex(0x1a1a4e);
+                hemiLight.groundColor.setHex(0x0a0a20);
+                hemiLight.intensity = 0.5;
+
+                directionalLight.color.setHex(0x8899cc);
+                directionalLight.intensity = 0.6;
+
+                fillLight.color.setHex(0x334477);
+                fillLight.intensity = 0.3;
+
+                // Interior lights glow warmer at night (they are the main light source)
+                interiorLightsGroup.children.forEach(light => {
+                    light.color.setHex(0xffcc66);
+                    light.intensity = 3.5;
+                    light.distance = 35;
+                });
+            } else {
+                // ── Day lighting (restore defaults) ──
+                ambientLight.color.setHex(0xffffff);
+                ambientLight.intensity = 1.6;
+
+                hemiLight.color.setHex(0xfff5ea);
+                hemiLight.groundColor.setHex(0x8899aa);
+                hemiLight.intensity = 2.2;
+
+                directionalLight.color.setHex(0xfff2dc);
+                directionalLight.intensity = 2.8;
+
+                fillLight.color.setHex(0xa5c9ff);
+                fillLight.intensity = 1.4;
+
+                // Restore interior lights
+                interiorLightsGroup.children.forEach(light => {
+                    light.color.setHex(0xfff8ee);
+                    light.intensity = 2.2;
+                    light.distance = 28;
+                });
+            }
+
+            needsRender = true;
+        }
+
+        // ═══════════════════════════════════════════════════
+        // PERFORMANCE: Optimized animation loop
+        // - Render-on-demand: only render when something changes
+        // - FPS counter with minimal overhead
+        // - Damping detection to stop rendering when idle
+        // ═══════════════════════════════════════════════════
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // PERFORMANCE: Track FPS
+            fpsFrames++;
+            const now = performance.now();
+            if (now - fpsLastTime >= 500) {
+                currentFps = Math.round(fpsFrames / ((now - fpsLastTime) / 1000));
+                hudFps.innerText = currentFps + ' FPS';
+
+                // Color code FPS
+                if (currentFps >= 55) {
+                    hudFps.style.color = '#10b981';
+                } else if (currentFps >= 30) {
+                    hudFps.style.color = '#fbbf24';
+                } else {
+                    hudFps.style.color = '#f87171';
+                }
+
+                fpsFrames = 0;
+                fpsLastTime = now;
+            }
+
+            // PERFORMANCE: controls.update() returns true if camera moved (damping in progress)
+            const dampingActive = controls.update();
+            if (dampingActive) {
+                needsRender = true;
+            }
+
+            // Auto-rotate always needs render
+            if (controls.autoRotate) {
+                needsRender = true;
+            }
+
+            // PERFORMANCE: Only render when needed
+            if (needsRender) {
+                renderer.info.reset();
+                renderer.render(scene, camera);
+                needsRender = false;
+            }
+        }
+    </script>
+</body>
+</html>
